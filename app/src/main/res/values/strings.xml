@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">OriTweaks</string>
+    <string name="module_description">Fixes and enhancements for vivo OriginOS 6 and 7</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connecting_detail">Waiting for the Xposed framework</string>
+    <string name="status_active">Module active</string>
+    <string name="status_inactive">Module not active</string>
+    <string name="status_inactive_detail">Enable OriTweaks in Vector (LSPosed) and restart.</string>
+    <string name="status_save_failed">Could not save; is Vector running?</string>
+    <string name="experimental">Experimental</string>
+    <string name="apply_soft_reboot">Soft reboot to apply</string>
+    <string name="apply_restart">Restart affected apps to apply</string>
+    <string name="soft_reboot_title">Soft reboot?</string>
+    <string name="soft_reboot_message">System changes need Android\'s framework to restart. All apps close; root and the phone itself stay up.</string>
+    <string name="soft_reboot_confirm">Soft reboot</string>
+</resources>

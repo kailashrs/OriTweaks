@@ -1,0 +1,2 @@
+-keep class io.github.kailashrs.oritweaks.OriTweaksModule { *; }
+-keep class rikka.shizuku.Shizuku { *; }
