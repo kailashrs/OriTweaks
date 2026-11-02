@@ -41,7 +41,7 @@ Games must also be added in **Game space** for the two game features to work.
 
 ### Full resolution needs a CamX override
 
-The camera hooks only fix how apps ask for full resolution. The camera HAL must also be told to offer it, and that needs a separate KernelSU module (not included here) that does three things:
+The camera hooks only fix how apps ask for full resolution. The camera HAL must also be told to offer it, and that needs the companion KernelSU/Magisk module **[camx-fullsize](https://github.com/kailashrs/camx-fullsize)**. It does three things:
 - sets `exposeFullSizeForQCFA=TRUE` in `camxoverridesettings.txt`;
 - adds the matching remosaic rules to the sensor-mode selector (`sensormode-selector/PD2454.json`);
 - adds the camera apps to `vendor.camera.aux.packagelist`, so the hidden periscope camera shows up.
