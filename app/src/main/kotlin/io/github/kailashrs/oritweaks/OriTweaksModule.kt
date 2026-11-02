@@ -42,7 +42,7 @@ class OriTweaksModule : XposedModule() {
             "com.vivo.gamecube", "com.vivo.gamewatch" ->
                 Hooks.install("game lists") { GameListHooks.install(java.io.File(param.applicationInfo.dataDir, "cache")) }
             in Features.CAMERA_APPS -> if (Features.enabled(Features.CAMERA_FULL_RES)) {
-                Hooks.install("camera full resolution") { CameraHooks.install() }
+                Hooks.install("camera full resolution") { CameraHooks.install(param.packageName) }
             }
         }
     }

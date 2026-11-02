@@ -30,10 +30,23 @@ import java.util.concurrent.ConcurrentHashMap
  * targets, every other request runs in default mode, and full-size bursts are cut to a memory budget.
  * Outputs are classified by size as soon as their ImageReader hands out a surface, because apps build
  * capture requests before configuring the session that will run them.
+ *
+ * Apps that never read the maximum-resolution stream map (Open Camera) are offered its JPEG sizes as
+ * high-resolution sizes of the normal map, which they already treat as single-shot only.
  */
 object CameraHooks {
     private const val MAX = CaptureRequest.SENSOR_PIXEL_MODE_MAXIMUM_RESOLUTION
     private const val DEFAULT = CaptureRequest.SENSOR_PIXEL_MODE_DEFAULT
+
+    /** Apps that only list sizes from the normal stream map. */
+    private val NORMAL_MAP_APPS = setOf("net.sourceforge.opencamera")
+
+    /** Templates of requests that take a picture; a full-size target wins over the preview in them. */
+    private val CAPTURE_TEMPLATES = setOf(
+        android.hardware.camera2.CameraDevice.TEMPLATE_STILL_CAPTURE,
+        android.hardware.camera2.CameraDevice.TEMPLATE_ZERO_SHUTTER_LAG,
+        android.hardware.camera2.CameraDevice.TEMPLATE_MANUAL,
+    )
 
     /** Raw frames a full-size burst may hold at once (one 50 MP RAW16 frame is ~100 MB). */
     private const val BURST_BUDGET_BYTES = 800L * 1024 * 1024
@@ -49,9 +62,14 @@ object CameraHooks {
     @Volatile
     private var activeArrays: Pair<Rect, Rect>? = null
     private val targets = Collections.synchronizedMap(WeakHashMap<CaptureRequest.Builder, MutableSet<Surface>>())
+    private val templates = Collections.synchronizedMap(WeakHashMap<CaptureRequest.Builder, Int>())
+
+    /** Normal stream map of each camera mapped to its maximum-resolution map, for [NORMAL_MAP_APPS]. */
+    private val fullMaps = Collections.synchronizedMap(WeakHashMap<StreamConfigurationMap, StreamConfigurationMap>())
     private val hooked = ConcurrentHashMap.newKeySet<Any>()
 
-    fun install() {
+    fun install(packageName: String) {
+        if (packageName in NORMAL_MAP_APPS) exposeFullSizes()
         // CameraDevice and CameraCaptureSession are hidden implementation classes; reach them through
         // the app's own callbacks and hook their public API methods.
         Hooks.hookAll(CameraManager::class.java, "openCamera") { chain ->
@@ -117,6 +135,29 @@ object CameraHooks {
         }
     }
 
+    private fun exposeFullSizes() {
+        Hooks.hook(CameraCharacteristics::class.java.getMethod("get", CameraCharacteristics.Key::class.java)) { chain ->
+            val value = chain.proceed()
+            if (chain.args[0] == CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP && value is StreamConfigurationMap) {
+                (chain.thisObject as CameraCharacteristics).get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP_MAXIMUM_RESOLUTION)
+                    ?.let { fullMaps[value] = it }
+            }
+            value
+        }
+        // JPEG only: RAW apps pick their largest RAW size for every photo, which would force full resolution on all of them.
+        Hooks.hook(StreamConfigurationMap::class.java.getMethod("getHighResolutionOutputSizes", Int::class.javaPrimitiveType)) { chain ->
+            @Suppress("UNCHECKED_CAST")
+            val sizes = chain.proceed() as Array<Size>?
+            val full = fullMaps[chain.thisObject]
+            if (chain.args[0] != ImageFormat.JPEG || full == null) return@hook sizes
+            val normal = (chain.thisObject as StreamConfigurationMap).getOutputSizes(ImageFormat.JPEG).orEmpty().toSet()
+            val added = full.getOutputSizes(ImageFormat.JPEG).orEmpty()
+                .filter { it !in normal && sizes?.contains(it) != true }
+                .sortedByDescending { it.width.toLong() * it.height }
+            if (added.isEmpty()) sizes else (added + sizes.orEmpty()).toTypedArray()
+        }
+    }
+
     private fun sizeKey(format: Int, width: Int, height: Int) = "$format:${width}x$height"
 
     private fun learnSizes(chars: CameraCharacteristics) {
@@ -132,6 +173,11 @@ object CameraHooks {
 
     private fun hookDevice(type: Class<*>) {
         if (!hooked.add(type)) return
+        Hooks.hook(type.getMethod("createCaptureRequest", Int::class.javaPrimitiveType)) { chain ->
+            val builder = chain.proceed() as CaptureRequest.Builder?
+            if (builder != null) templates[builder] = chain.args[0] as Int
+            builder
+        }
         Hooks.hook(type.getMethod("createCaptureSession", SessionConfiguration::class.java)) { chain ->
             val config = chain.args[0] as SessionConfiguration
             for (output in config.outputConfigurations) {
@@ -154,7 +200,10 @@ object CameraHooks {
         when {
             full.isEmpty() -> if (requested == MAX) builder.set(CaptureRequest.SENSOR_PIXEL_MODE, DEFAULT)
             full.size == surfaces.size -> if (requested != MAX) builder.set(CaptureRequest.SENSOR_PIXEL_MODE, MAX)
-            requested == MAX -> surfaces.filter { it !in fullSizeOnly }.forEach { builder.removeTarget(it) }
+            requested == MAX || templates[builder] in CAPTURE_TEMPLATES -> {
+                surfaces.filter { it !in fullSizeOnly }.forEach { builder.removeTarget(it) }
+                builder.set(CaptureRequest.SENSOR_PIXEL_MODE, MAX)
+            }
             else -> full.forEach { builder.removeTarget(it) }
         }
         if (builder.get(CaptureRequest.SENSOR_PIXEL_MODE) == MAX) {
