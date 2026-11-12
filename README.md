@@ -19,7 +19,7 @@ Google integrations (Circle to Search, Gemini gestures, Quick Share, Discover an
 | | |
 | --- | --- |
 | Device | vivo X200 Ultra (PD2454), China firmware |
-| OS | OriginOS 6 (Android 16) and OriginOS 7 (Android 17, checked on 17.2.10.6 / launcher 17.0.0.381) |
+| OS | OriginOS 6 (Android 16) and OriginOS 7 (Android 17, checked on 17.2.11.5 / launcher 17.0.0.402) |
 | Framework | Any libxposed API 102 framework; developed on Vector |
 | Optional | [Shizuku](https://github.com/RikkaApps/Shizuku), which lets the app restart affected apps without a soft reboot |
 

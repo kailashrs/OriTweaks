@@ -8,16 +8,16 @@ import java.lang.reflect.Modifier
 /**
  * Origin Island's music card is served by com.vivo.musicwidgetmix (island side: SystemUIPlugin's
  * RemoteMusicManager). It only follows apps on its lists: the built-in defaults in a singleton
- * (s4.m0 on OriginOS 6, w6.v0 on OriginOS 7) and the cloud whitelist, into which
+ * (s4.m0 on OriginOS 6, w6.v0 / x7.v0 on OriginOS 7) and the cloud whitelist, into which
  * R.array.framework_support_list is merged for the cooperate, resident and lock-screen lists.
  * Non-cooperating apps such as Spotify already work through its generic MediaController path,
- * so adding a package to these lists is enough. Checked on VivoMusicWidgetMix 6.2.7.2 and 17.0.9.1.
+ * so adding a package to these lists is enough. Checked on VivoMusicWidgetMix 6.2.7.2, 17.0.9.1 and 17.0.9.6.
  */
 object IslandMusicHooks {
     private const val PACKAGE = "com.vivo.musicwidgetmix"
 
-    /** Obfuscated holder of the built-in lists: s4.m0 on OriginOS 6 (6.2.7.2), w6.v0 on OriginOS 7 (17.0.9.1). */
-    private val HOLDERS = listOf("w6.v0", "s4.m0")
+    /** Obfuscated holder of the built-in lists: s4.m0 on OriginOS 6 (6.2.7.2), w6.v0 / x7.v0 on OriginOS 7 (17.0.9.1 / 17.0.9.6). */
+    private val HOLDERS = listOf("x7.v0", "w6.v0", "s4.m0")
 
     /** Apps every music list contains, which tells them apart from the other lists in the holder. */
     private val ANCHORS = setOf("com.android.bbkmusic", "com.netease.cloudmusic", "com.tencent.qqmusic")
